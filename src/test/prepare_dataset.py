@@ -4,9 +4,9 @@ import pandas as pd
 from pathlib import Path
 
 # Chemins (adaptez si besoin)
-chemin_non_seg = "/data/Downloads/Data_Projet_Complet/Data_Projet/mission_herbonaute_2000/"
-chemin_seg = "/data/Downloads/Data_Projet_Complet/Data_Projet/mission_herbonaute_2000_seg_black/"
-chemin_labels = "/data/Downloads/Data_Projet_Complet/Data_Projet/labels_1.csv"
+chemin_non_seg = "C:\\Users\\zakar\\Downloads\\DeepLearning\\mission_herbonaute_2000"
+chemin_seg = "C:\\Users\\zakar\\Downloads\\DeepLearning\\mission_herbonaute_2000_seg_black/"
+chemin_labels = "C:\\Users\\zakar\\Downloads\\DeepLearning\\labels_1.csv"
 
 # 1. Charger le CSV des labels
 df_labels = pd.read_csv(chemin_labels, sep=';', skiprows=1)
