@@ -23,14 +23,14 @@ for idx, row in df.iterrows():
         
         # Vérifier la taille minimale
         if w < 50 or h < 50:
-            problemes.append(f"❌ {image_id}: Image trop petite ({w}x{h})")
+            problemes.append(f"{image_id}: Image trop petite ({w}x{h})")
         
         # Vérifier le mode (RGB attendu)
         if mode not in ['RGB', 'L']:
-            problemes.append(f"⚠️ {image_id}: Mode inhabituel ({mode})")
+            problemes.append(f" {image_id}: Mode inhabituel ({mode})")
             
     except Exception as e:
-        problemes.append(f"❌ {image_id}: Non-seg corrompue - {e}")
+        problemes.append(f"{image_id}: Non-seg corrompue - {e}")
     
     # Vérifier image segmentée
     try:
@@ -39,17 +39,17 @@ for idx, row in df.iterrows():
         
         # Vérifier que les deux images ont la même taille
         if (w, h) != (w_seg, h_seg):
-            problemes.append(f"⚠️ {image_id}: Tailles différentes - Non-seg:{w}x{h}, Seg:{w_seg}x{h_seg}")
+            problemes.append(f" {image_id}: Tailles différentes - Non-seg:{w}x{h}, Seg:{w_seg}x{h_seg}")
             
     except Exception as e:
-        problemes.append(f"❌ {image_id}: Seg corrompue - {e}")
+        problemes.append(f"{image_id}: Seg corrompue - {e}")
 
-print(f"\n✅ Images vérifiées : {len(df)}")
-print(f"⚠️ Problèmes détectés : {len(problemes)}")
+print(f"\nImages vérifiées : {len(df)}")
+print(f"Problèmes détectés : {len(problemes)}")
 
 if problemes:
     print("\nDétail des problèmes :")
     for p in problemes[:20]:  # Afficher les 20 premiers
         print(f"  {p}")
 else:
-    print("\n🎉 Toutes les images sont OK !")
+    print("\nToutes les images sont OK !")
