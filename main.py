@@ -1,6 +1,6 @@
 import sys
 import os
-sys.path.insert(0, '/home/cytech/Ing3/DeepLearning/PROJET_DEEPL/src')
+sys.path.insert(0, './src')
 
 import torch
 import torch.nn as nn
@@ -11,10 +11,9 @@ from tqdm import tqdm
 from sklearn.metrics import f1_score, accuracy_score
 
 from data.dataset import create_dataloaders, set_seed
-from models.crossvit import crossvit_small_224
+from models.crossvit import crossvit_small_224, crossvit_part2, crossvit_part2_sym
 from training.training import train_model_crossvit
-from evaluation.affichage import plot_training_curves, plot_comparison_configs, save_results_csv
-
+from evaluation.affichage import plot_training_curves, plot_comparison_configs, save_results_csv, plot_confusion_matrix
 
 def main():
     """Lance l'entraînement pour les 4 configurations A, B, C1, C2."""
@@ -53,17 +52,23 @@ def main():
     # Dictionnaire pour stocker les résultats
     all_histories = {}
     all_models = {}
+    all_preds = {}
     
     # Boucle sur les 4 configurations
-    configs = ['A', 'B', 'C1', 'C2']
-    
+    # configs = ['A', 'B', 'C1', 'C2'] # Configurations partie 1
+    configs = ['A', 'B', 'C1', 'C2'] # Configurations partie 2 asymetrique
+    # configs = ['A', 'B', 'C1'] # Configurations partie 2 symetrique
+    # configs = ['Partie3_C'] # Configurations parte 3
+
     for config in configs:
         print(f"\n{'='*70}")
         print(f" Configuration {config}")
         print(f"{'='*70}")
         
         # Créer le modèle
-        model = crossvit_small_224(num_classes=2, pretrained=False)
+        # model = crossvit_small_224(num_classes=2, pretrained=False) # Modele partie 1
+        model = crossvit_part2(num_classes=2, pretrained=False) # Modele partie 2 asymetrique
+        # model = crossvit_part2_sym(num_classes=2, pretrained=False) # Modele partie 2 symetrique
         model = model.to(device)
         
         # Loss & Optimizer
@@ -87,7 +92,7 @@ def main():
         }
         
         # Entraîner
-        trained_model, history = train_model_crossvit(
+        trained_model, history, final_preds = train_model_crossvit(
             model=model,
             dataloaders=dataloaders,
             criterion=criterion,
@@ -101,13 +106,21 @@ def main():
         # Sauvegarder
         all_histories[config] = history
         all_models[config] = trained_model
+        all_preds[config] = final_preds
         
         # Courbes individuelles
         plot_training_curves(history, config, output_dir='./results')
-    
+        plot_confusion_matrix(
+            y_true=final_preds['labels'],
+            y_pred=final_preds['preds'],
+            config_name=config,
+            classes=['Absence épines', 'Présence épines'],
+            output_dir='./results'
+        )
+
     # Comparaison globale
     print(f"\n{'='*70}")
-    print("📈 Génération des courbes de comparaison...")
+    print("Génération des courbes de comparaison...")
     print(f"{'='*70}")
     
     plot_comparison_configs(all_histories, output_dir='./results')

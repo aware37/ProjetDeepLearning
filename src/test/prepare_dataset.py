@@ -4,9 +4,9 @@ import pandas as pd
 from pathlib import Path
 
 # Chemins (adaptez si besoin)
-chemin_non_seg = "/data/Downloads/Data_Projet_Complet/Data_Projet/mission_herbonaute_2000/"
-chemin_seg = "/data/Downloads/Data_Projet_Complet/Data_Projet/mission_herbonaute_2000_seg_black/"
-chemin_labels = "/data/Downloads/Data_Projet_Complet/Data_Projet/labels_1.csv"
+chemin_non_seg = "./Data_Projet_Complet/Data_Projet/mission_herbonaute_2000/"
+chemin_seg = "./Data_Projet_Complet/Data_Projet/mission_herbonaute_2000_seg_black/"
+chemin_labels = "./Data_Projet_Complet/Data_Projet/labels_1.csv"
 
 # 1. Charger le CSV des labels
 df_labels = pd.read_csv(chemin_labels, sep=';', skiprows=1)
@@ -74,7 +74,7 @@ print(f"\n=== Dataset complet ===")
 print(df_dataset)
 
 # 7. Sauvegarder le dataset en CSV
-output_path = "./data/prepared_dataset.csv"
+output_path = "./data/raw/prepared_dataset.csv"
 df_dataset.to_csv(output_path, index=False)
 print(f"\n✅ Dataset sauvegardé dans : {output_path}")
 
