@@ -61,3 +61,7 @@ logs/
 # Cache
 .cache/
 .pytest_cache/
+
+
+Data_Projet_Complet/
+deploy.sh

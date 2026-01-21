@@ -342,7 +342,6 @@ class VisionTransformer(nn.Module):
 
 @register_model
 def crossvit_tiny_224(pretrained=False, **kwargs):
-    # Retirer les arguments non supportés
     kwargs.pop('pretrained_cfg', None)
     kwargs.pop('pretrained_cfg_overlay', None)
     
@@ -356,6 +355,32 @@ def crossvit_tiny_224(pretrained=False, **kwargs):
         model.load_state_dict(state_dict)
     return model
 
+
+# Modele asymetrique pour la partie 2
+@register_model
+def crossvit_part2(pretrained=False, **kwargs):
+    kwargs.pop('pretrained_cfg', None)
+    kwargs.pop('pretrained_cfg_overlay', None)
+
+    model = VisionTransformer(img_size=[224, 224],
+                              patch_size=[16, 16], embed_dim=[192, 192], depth=[[1, 4, 0], [1, 4, 0], [1, 4, 0]],
+                              num_heads=[6, 6], mlp_ratio=[4, 4, 1], qkv_bias=True,
+                              norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    model.default_cfg = _cfg()
+    return model
+
+# Modele symetrique pour la partie 2
+@register_model
+def crossvit_part2_sym(pretrained=False, **kwargs):
+    kwargs.pop('pretrained_cfg', None)
+    kwargs.pop('pretrained_cfg_overlay', None)
+
+    model = VisionTransformer(img_size=[224, 224],
+                              patch_size=[16, 16], embed_dim=[192, 192], depth=[[4, 4, 0], [1, 4, 0], [4, 4, 0]],
+                              num_heads=[6, 6], mlp_ratio=[4, 4, 1], qkv_bias=True,
+                              norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    model.default_cfg = _cfg()
+    return model
 
 @register_model
 def crossvit_small_224(pretrained=False, **kwargs):
@@ -379,7 +404,7 @@ def crossvit_base_224(pretrained=False, **kwargs):
     kwargs.pop('pretrained_cfg_overlay', None)
 
     model = VisionTransformer(img_size=[240, 224],
-                              patch_size=[12, 16], embed_dim=[384, 768], depth=[[1, 4, 0], [1, 4, 0], [1, 4, 0]],
+                              patch_size=[12, 16], embed_dim=[384, 768], depth=[[4, 4, 0], [1, 4, 0], [1, 4, 0]],
                               num_heads=[12, 12], mlp_ratio=[4, 4, 1], qkv_bias=True,
                               norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     model.default_cfg = _cfg()
