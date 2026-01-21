@@ -1,5 +1,8 @@
 import os
+import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
 
 def plot_training_curves(history, config_name, output_dir='./results'):
     """Plot les courbes d'apprentissage et les sauvegarde dans results/."""
@@ -10,8 +13,8 @@ def plot_training_curves(history, config_name, output_dir='./results'):
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
     
     # Loss
-    axes[0].plot(history['train_loss'], label='Train', marker='o')
-    axes[0].plot(history['val_loss'], label='Val', marker='s')
+    axes[0].plot(history['train_loss'], label='Train')
+    axes[0].plot(history['val_loss'], label='Val')
     axes[0].set_title('Loss')
     axes[0].set_xlabel('Epoch')
     axes[0].set_ylabel('Loss')
@@ -19,8 +22,8 @@ def plot_training_curves(history, config_name, output_dir='./results'):
     axes[0].grid()
     
     # Accuracy
-    axes[1].plot(history['train_acc'], label='Train', marker='o')
-    axes[1].plot(history['val_acc'], label='Val', marker='s')
+    axes[1].plot(history['train_acc'], label='Train')
+    axes[1].plot(history['val_acc'], label='Val')
     axes[1].set_title('Accuracy')
     axes[1].set_xlabel('Epoch')
     axes[1].set_ylabel('Accuracy')
@@ -29,8 +32,8 @@ def plot_training_curves(history, config_name, output_dir='./results'):
     axes[1].grid()
     
     # F1-Score
-    axes[2].plot(history['train_f1'], label='Train', marker='o')
-    axes[2].plot(history['val_f1'], label='Val', marker='s')
+    axes[2].plot(history['train_f1'], label='Train')
+    axes[2].plot(history['val_f1'], label='Val')
     axes[2].set_title('F1-Score')
     axes[2].set_xlabel('Epoch')
     axes[2].set_ylabel('F1-Score')
@@ -44,7 +47,7 @@ def plot_training_curves(history, config_name, output_dir='./results'):
     # Sauvegarder dans results/
     output_path = os.path.join(output_dir, f'curves_config_{config_name}.png')
     plt.savefig(output_path, dpi=150)
-    print(f"✓ Courbes sauvegardées : {output_path}")
+    print(f"Courbes sauvegardées : {output_path}")
     plt.close()
 
 
@@ -61,7 +64,7 @@ def plot_comparison_configs(all_histories, output_dir='./results'):
     ax = axes[0, 0]
     for config in configs:
         ax.plot(all_histories[config]['val_loss'], label=f'Config {config}', 
-                color=colors[config], marker='o', linewidth=2)
+                color=colors[config], linewidth=2)
     ax.set_title('Validation Loss - Comparison', fontweight='bold')
     ax.set_xlabel('Epoch')
     ax.set_ylabel('Loss')
@@ -72,7 +75,7 @@ def plot_comparison_configs(all_histories, output_dir='./results'):
     ax = axes[0, 1]
     for config in configs:
         ax.plot(all_histories[config]['val_acc'], label=f'Config {config}', 
-                color=colors[config], marker='o', linewidth=2)
+                color=colors[config], linewidth=2)
     ax.set_title('Validation Accuracy - Comparison', fontweight='bold')
     ax.set_xlabel('Epoch')
     ax.set_ylabel('Accuracy')
@@ -84,7 +87,7 @@ def plot_comparison_configs(all_histories, output_dir='./results'):
     ax = axes[1, 0]
     for config in configs:
         ax.plot(all_histories[config]['val_f1'], label=f'Config {config}', 
-                color=colors[config], marker='o', linewidth=2)
+                color=colors[config], linewidth=2)
     ax.set_title('Validation F1-Score - Comparison', fontweight='bold')
     ax.set_xlabel('Epoch')
     ax.set_ylabel('F1-Score')
@@ -114,10 +117,10 @@ def plot_comparison_configs(all_histories, output_dir='./results'):
     
     plt.tight_layout()
     
-    # Sauvegarder
+    # Sauvegarder dans results/
     output_path = os.path.join(output_dir, 'comparison_all_configs.png')
     plt.savefig(output_path, dpi=150)
-    print(f"✓ Comparaison sauvegardée : {output_path}")
+    print(f"Comparaison sauvegardée : {output_path}")
     plt.close()
 
 
@@ -138,6 +141,28 @@ def save_results_csv(histories, output_dir='./results'):
             'val_f1': history['val_f1']
         })
         
+        # Sauvegarder le CSV dans results/
         output_path = os.path.join(output_dir, f'results_config_{config}.csv')
         df.to_csv(output_path, index=False)
-        print(f"✓ Résultats sauvegardés : {output_path}")
+        print(f"Résultats sauvegardés : {output_path}")
+
+    
+def plot_confusion_matrix(y_true, y_pred, classes, config_name, output_dir='./results'):
+    """Trace et sauvegarde la matrice de confusion."""
+    
+    os.makedirs(output_dir, exist_ok=True)
+    
+    cm = confusion_matrix(y_true, y_pred)
+
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=classes, yticklabels=classes)
+    plt.ylabel('True Label')
+    plt.xlabel('Predicted Label')
+    plt.title(f'Confusion Matrix - Config {config_name}', fontweight='bold')
+    plt.tight_layout()
+    
+    # Sauvegarder dans results/
+    output_path = os.path.join(output_dir, f'confusion_matrix_config_{config_name}.png')
+    plt.savefig(output_path, dpi=150)
+    print(f"Matrice de confusion sauvegardée : {output_path}")
+    plt.close()

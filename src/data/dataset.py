@@ -7,7 +7,9 @@ from torch.utils.data import Dataset, DataLoader, Subset, random_split
 import random
 import numpy as np
 from PIL import Image, ImageFile
-ImageFile.LOAD_TRUNCATED_IMAGES = True  # <--- LA LIGNE MAGIQUE
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def set_seed(seed: int = 42):
     random.seed(seed)
@@ -31,8 +33,22 @@ class load_dataset(Dataset):
     def __getitem__(self, index):
         row = self.data_frame.iloc[index]
         
-        non_seg_path = row['non_seg']
-        seg_path = row['seg']
+        # Récupérer les chemins depuis le CSV
+        non_seg_full_path = str(row['non_seg'])
+        seg_full_path = str(row['seg'])
+        
+        # Sur local: /data/Downloads/Data_Projet_Complet/...
+        # Sur serveur: /home/ubuntu/PROJET_DEEPL/PROJET_DEEPL/Data_Projet_Complet/...
+        if "Data_Projet_Complet" in non_seg_full_path:
+            non_seg_relative = non_seg_full_path[non_seg_full_path.index("Data_Projet_Complet"):]
+            seg_relative = seg_full_path[seg_full_path.index("Data_Projet_Complet"):]
+        else:
+            non_seg_relative = non_seg_full_path
+            seg_relative = seg_full_path
+        
+        non_seg_path = os.path.join(BASE_DIR, non_seg_relative)
+        seg_path = os.path.join(BASE_DIR, seg_relative)
+        
         label = row['label']
         
         image_non_seg = Image.open(non_seg_path).convert("RGB")

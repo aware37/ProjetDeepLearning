@@ -45,9 +45,9 @@ def train_model_crossvit(model, dataloaders, criterion, optimizer, scheduler, co
         # Each epoch has a training and validation phase
         for phase in ['train', 'val']:
             if phase == 'train':
-                model.train()
+                model.train() # Set model to training mode
             else:
-                model.eval()
+                model.eval() # Set model to evaluate mode
 
             running_loss = 0.0
             running_corrects = 0
@@ -75,6 +75,9 @@ def train_model_crossvit(model, dataloaders, criterion, optimizer, scheduler, co
                     input_L, input_S = inputs_seg, inputs_non_seg
                 elif config == 'C2':
                     # Config C2 : segmentées -> Small, non segmentées -> Large
+                    input_L, input_S = inputs_non_seg, inputs_seg
+                elif config == 'Partie3_C':
+                    # Config Partie 3 C : segmentées -> Small, non segmentées -> Large
                     input_L, input_S = inputs_non_seg, inputs_seg
                 else:
                     raise ValueError(f"Config {config} inconnue. Utilisez 'A', 'B', 'C1' ou 'C2'")
@@ -128,8 +131,10 @@ def train_model_crossvit(model, dataloaders, criterion, optimizer, scheduler, co
                 best_val_f1 = epoch_f1
                 best_val_acc = epoch_acc.item()
                 best_model_wts = copy.deepcopy(model.state_dict())
+                best_preds = all_preds.copy()
+                best_labels = all_labels.copy()
                 torch.save(model.state_dict(), best_model_path)
-                print(f'✓ Meilleur modèle sauvegardé (Acc: {best_val_acc:.4f}, F1: {best_val_f1:.4f})')
+                print(f'Meilleur modèle sauvegardé (Acc: {best_val_acc:.4f}, F1: {best_val_f1:.4f})')
 
     time_elapsed = time.time() - since
     print(f'\n{"-"*10}')
@@ -142,4 +147,9 @@ def train_model_crossvit(model, dataloaders, criterion, optimizer, scheduler, co
     if best_model_wts is not None:
         model.load_state_dict(best_model_wts)
     
-    return model, history
+    final_preds = {
+        'preds': best_preds,
+        'labels': best_labels
+    }
+
+    return model, history, final_preds

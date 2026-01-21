@@ -5,8 +5,8 @@ import os
 from pathlib import Path
 
 # TODO: Adapter ces chemins à votre organisation
-chemin_non_seg = "/data/Downloads/Data_Projet_Complet/Data_Projet/mission_herbonaute_2000/"
-chemin_seg = "/data/Downloads/Data_Projet_Complet/Data_Projet/mission_herbonaute_2000_seg_black/"
+chemin_non_seg = "./Data_Projet_Complet/Data_Projet/mission_herbonaute_2000/"
+chemin_seg = "./Data_Projet_Complet/Data_Projet/mission_herbonaute_2000_seg_black/"
 
 # Lister les fichiers
 fichiers_non_seg = sorted(os.listdir(chemin_non_seg))
