@@ -144,7 +144,7 @@ class MultiScaleBlock(nn.Module):
             for i in range(depth[d]):
                 tmp.append(
                     Block(dim=dim[d], num_heads=num_heads[d], mlp_ratio=mlp_ratio[d], qkv_bias=qkv_bias, 
-                          proj_drop=drop, attn_drop=attn_drop, drop_path=drop_path[i], norm_layer=norm_layer))
+                          drop=drop, attn_drop=attn_drop, drop_path=drop_path[i], norm_layer=norm_layer))
             if len(tmp) != 0:
                 self.blocks.append(nn.Sequential(*tmp))
 

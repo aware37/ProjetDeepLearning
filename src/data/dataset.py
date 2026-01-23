@@ -78,12 +78,12 @@ def split_dataset(dataset, train_ratio=0.8, seed=42):
 
 
 
-def get_dataloaders(train_subset, val_subset, batch_size=32):
+def get_dataloaders(train_subset, val_subset, batch_size=64):
     train_loader = DataLoader(
         train_subset, 
         batch_size=batch_size, 
         shuffle=True, 
-        num_workers=2,
+        num_workers=4,
         pin_memory=True
     )
     
@@ -91,7 +91,7 @@ def get_dataloaders(train_subset, val_subset, batch_size=32):
         val_subset, 
         batch_size=batch_size, 
         shuffle=False, 
-        num_workers=2,
+        num_workers=4,
         pin_memory=True
     )
     
