@@ -56,9 +56,9 @@ def main():
     
     # Boucle sur les 4 configurations
     # configs = ['A', 'B', 'C1', 'C2'] # Configurations partie 1
-    configs = ['A', 'B', 'C1', 'C2'] # Configurations partie 2 asymetrique
+    # configs = ['A', 'B', 'C1', 'C2'] # Configurations partie 2 asymetrique
     # configs = ['A', 'B', 'C1'] # Configurations partie 2 symetrique
-    # configs = ['Partie3_C'] # Configurations parte 3
+    configs = ['Partie3_C'] # Configurations parte 3
 
     for config in configs:
         print(f"\n{'='*70}")
