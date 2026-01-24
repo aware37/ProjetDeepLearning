@@ -64,12 +64,34 @@ class PatchEmbed(nn.Module):
         else:
             self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
 
-    def forward(self, x):
+    def forward(self, x, mask=None):
         B, C, H, W = x.shape
-        # FIXME look at relaxing size constraints
+
         assert H == self.img_size[0] and W == self.img_size[1], \
             f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
-        x = self.proj(x).flatten(2).transpose(1, 2)
+
+        if mask is not None:
+
+            if mask.shape[-2:] != (H, W):
+                mask = F.interpolate(mask, size=(H, W), mode='nearest')
+
+            binary_mask = (mask.sum(dim=1, keepdim=True) > 0).float()
+
+            r_p = F.avg_pool2d(binary_mask, kernel_size=self.patch_size, stride=self.patch_size)
+
+            epsilon = 1e-6
+            w_p = epsilon + r_p
+
+            w_p = w_p / (w_p.mean(dim=(2, 3), keepdim=True) + epsilon)
+        else:
+            w_p = None
+
+        x = self.proj(x)
+
+        if w_p is not None:
+            x = x * w_p
+
+        x = x.flatten(2).transpose(1, 2)
         return x
 
 
@@ -304,7 +326,7 @@ class VisionTransformer(nn.Module):
                  )
             
             # Embedding (PatchEmbed)
-            tmp = self.patch_embed[i](x_in)
+            tmp = self.patch_embed[i](x_in, mask=mask)
             
             # Ajout CLS token + Position
             B = x_in.shape[0]

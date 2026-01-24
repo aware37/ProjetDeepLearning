@@ -58,7 +58,7 @@ def plot_comparison_configs(all_histories, output_dir='./results'):
     
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     configs = list(all_histories.keys())
-    colors = {'A': '#1f77b4', 'B': '#ff7f0e', 'C1': '#2ca02c', 'C2': '#d62728'}
+    colors = {'A': '#1f77b4', 'B': '#ff7f0e', 'C1': '#2ca02c', 'C2': '#d62728','Partie3_C': '#9467bd'}
     
     # Val Loss
     ax = axes[0, 0]
