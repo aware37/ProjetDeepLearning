@@ -33,14 +33,14 @@ class load_dataset(Dataset):
         image_mean = [0.485, 0.456, 0.406]
         image_std = [0.229, 0.224, 0.225]
         
-        # Pipeline pour les IMAGES (avec normalisation)
+        # Pipeline pour les image (avec normalisation)
         self.transform_img = transforms.Compose([
             transforms.Resize((img_size, img_size)),
             transforms.ToTensor(),
             transforms.Normalize(image_mean, image_std)
         ])
         
-        # Pipeline pour les MASQUES (SANS normalisation)
+        # Pipeline pour les masques (sans normalisation)
         self.transform_mask = transforms.Compose([
             transforms.Resize((img_size, img_size)),
             transforms.ToTensor()
@@ -56,7 +56,7 @@ class load_dataset(Dataset):
         non_seg_full_path = str(row['non_seg'])
         seg_full_path = str(row['seg'])
         
-        # Gérer les chemins local/serveur
+        # Gérer les chemins
         if "Data_Projet_Complet" in non_seg_full_path:
             non_seg_relative = non_seg_full_path[non_seg_full_path.index("Data_Projet_Complet"):]
             seg_relative = seg_full_path[seg_full_path.index("Data_Projet_Complet"):]

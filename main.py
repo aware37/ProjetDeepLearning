@@ -50,11 +50,6 @@ def main():
     # Setup
     set_seed(SEED)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f"\n{'-'*10}")
-    print(f"Entraînement CrossViT")
-    print(f"{'-'*10}")
-    print(f"Device: {device}")
-    
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(checkpoint_dir, exist_ok=True)
     
@@ -81,7 +76,6 @@ def main():
     for config in configs:
         print(f"\n{'-'*10}")
         print(f"Configuration {config}")
-        print(f"{'-'*10}")
         
         # Créer le modèle
         model = model_used()
@@ -127,18 +121,13 @@ def main():
             output_dir=output_dir
         )
     
-    # Comparaison des configurations
-    print(f"\n{'-'*10}")
-    print("Génération des courbes de comparaison...")
-    print(f"{'-'*10}")
-    
+    # Comparaison des configurations    
     plot_comparison_configs(all_histories, output_dir=output_dir)
     save_results_csv(all_histories, output_dir=output_dir)
     
     # Résumé final
     print(f"\n{'-'*10}")
     print("RÉSUMÉ FINAL")
-    print(f"{'-'*10}")
     
     summary_data = []
     for config in configs:
