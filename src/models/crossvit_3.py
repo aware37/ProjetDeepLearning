@@ -319,14 +319,14 @@ class VisionTransformer(nn.Module):
             attn_mean = attn.mean(dim=1)  # (B, H, 1, N) → (B, 1, N)
             N = attn_mean.shape[-1]
             
-            # Ajouter identité pour stabilité
+            # Ajouter matrice identité pour stabilité
             eye = torch.eye(N, device=attn_mean.device).unsqueeze(0).expand(attn_mean.shape[0], -1, -1)
             attn_norm = (attn_mean + eye) / 2
             attn_norm = attn_norm / attn_norm.sum(dim=-1, keepdim=True)
             
             rollout = attn_norm if rollout is None else rollout @ attn_norm
         
-        return rollout[:, 0, 1:]  # Attention CLS → patches
+        return rollout[:, 0, 1:]
     
     def get_heatmap(self, branch_idx=0):
         """Convertit l'attention rollout en heatmap à la résolution de l'image"""
@@ -335,25 +335,26 @@ class VisionTransformer(nn.Module):
             return None
         
         B = rollout.shape[0]
+        num_tokens = rollout.shape[-1]
         
-        # Extraire patch_size correctement (peut être tuple ou int)
         patch_size = self.patch_embed[branch_idx].patch_size
         if isinstance(patch_size, (list, tuple)):
             patch_size = patch_size[0]
         
-        # Extraire img_size correctement (peut être tuple ou int)
         img_size = self.img_size[branch_idx]
         if isinstance(img_size, (list, tuple)):
             img_size = img_size[0]
         
-        # Calculer n_patches
-        n_patches = img_size // patch_size
+        # Calculer n_patches à partir du nombre réel de tokens
+        import math
+        n_patches = int(math.sqrt(num_tokens))
         
         # Reshape en grille 2D et interpoler
         heatmap = rollout.reshape(B, n_patches, n_patches).unsqueeze(1)
-        heatmap = F.interpolate(heatmap, size=(img_size, img_size), mode='bilinear', align_corners=False).squeeze(1)
+        heatmap = F.interpolate(heatmap, size=(img_size, img_size), mode='bilinear', align_corners=False)
+        heatmap = heatmap.squeeze(1)
         
-        # Normaliser [0, 1] par batch (plus stable)
+        # Normaliser [0, 1]
         heatmap_min = heatmap.view(B, -1).min(dim=1, keepdim=True)[0].view(B, 1, 1)
         heatmap_max = heatmap.view(B, -1).max(dim=1, keepdim=True)[0].view(B, 1, 1)
         heatmap = (heatmap - heatmap_min) / (heatmap_max - heatmap_min + 1e-8)
@@ -375,7 +376,7 @@ class VisionTransformer(nn.Module):
         binary_att = (attention_map >= thresh_val).float()
         binary_mask = (mask > 0.5).float()
         
-        # IoU = intersection / union
+        # IoU
         inter = (binary_att * binary_mask).sum(dim=[1, 2])
         union = ((binary_att + binary_mask) > 0).float().sum(dim=[1, 2])
         

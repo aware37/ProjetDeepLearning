@@ -66,17 +66,17 @@ def main_partie4():
     
     # Liste des modeles a evaluer
     modeles_a_evaluer = [
-        # Partie 1 (crossvit_small_224, dim=384)
+        # Partie 1 (crossvit_small_224)
         {'name': 'P1_A', 'path': './checkpoints/partie1/best_model_config_A.pth',  'config': 'A',  'part': 1},
         {'name': 'P1_B', 'path': './checkpoints/partie1/best_model_config_B.pth',  'config': 'B',  'part': 1},
         {'name': 'P1_C1','path': './checkpoints/partie1/best_model_config_C1.pth', 'config': 'C1', 'part': 1},
         {'name': 'P1_C2','path': './checkpoints/partie1/best_model_config_C2.pth', 'config': 'C2', 'part': 1},
-        # Partie 2 (crossvit_part2, dim=384)
-        {'name': 'P2_A', 'path': './checkpoints/partie2/best_model_config_A.pth',  'config': 'A',  'part': 2},
+        # Partie 2 (crossvit_part2)
+        #{'name': 'P2_A', 'path': './checkpoints/partie2/best_model_config_A.pth',  'config': 'A',  'part': 2},
         {'name': 'P2_B', 'path': './checkpoints/partie2/best_model_config_B.pth',  'config': 'B',  'part': 2},
         {'name': 'P2_C1','path': './checkpoints/partie2/best_model_config_C1.pth', 'config': 'C1', 'part': 2},
         {'name': 'P2_C2','path': './checkpoints/partie2/best_model_config_C2.pth', 'config': 'C2', 'part': 2},
-        # Partie 3 (crossvit_part2, dim=192)
+        # Partie 3 (crossvit_part2)
         {'name': 'P3_C1','path': './checkpoints/partie3/best_model_config_C1.pth', 'config': 'C1', 'part': 3},
         {'name': 'P3_C2','path': './checkpoints/partie3/best_model_config_C2.pth', 'config': 'C2', 'part': 3},
     ]
@@ -100,12 +100,13 @@ def main_partie4():
         
         # Charger le modele
         if part == 1:
-            model = crossvit_small_224(num_classes=2, pretrained=False).to(device)
+            model = crossvit_small_224(num_classes=2, pretrained=False)
         else:
-            # crossvit_part2 doit accepter embed_dim ; sinon retire cet argument
-            model = crossvit_part2(num_classes=2, pretrained=False).to(device)
+            model = crossvit_part2(num_classes=2, pretrained=False)
+        
         try:
             model.load_state_dict(torch.load(path, map_location=device))
+            model = model.to(device)  # ← AJOUTE CETTE LIGNE
             model.eval()
             print(f"Modele charge avec succes")
         except Exception as e:
@@ -204,6 +205,16 @@ def main_partie4():
             print(f"  Avec IoU loss: {all_iou_results[key_iou]['mean']:.4f}")
             gain = all_iou_results[key_iou]['mean'] - all_iou_results[baseline_key]['mean']
             print(f"  Gain: {gain:+.4f}")
+            
+            # AJOUTE ICI : Graphique de comparaison
+            # Charger l'historique baseline depuis results/partieX/results_config_C1.csv
+            import pandas as pd
+            baseline_csv = f'./results/partie{baseline_key[1]}/results_config_C1.csv'
+            if os.path.exists(baseline_csv):
+                df_baseline = pd.read_csv(baseline_csv)
+                history_baseline = {k: df_baseline[k].tolist() for k in df_baseline.columns if k != 'epoch'}
+                plot_iou_loss_comparison(history_baseline, history_iou, config_iou, output_dir=output_dir)
+            break
     
     #TABLEAUX RECAPITULATIFS
     print(f"\n{'-'*10}")
@@ -237,7 +248,7 @@ def main_partie4():
     ablation_data = []
     
     # Partie 1
-    for cfg in ['A', 'B', 'C1', 'C2']:
+    for cfg in ['B', 'C1', 'C2']:
         key = f'P1_{cfg}'
         if key in all_iou_results:
             ablation_data.append({
@@ -250,7 +261,7 @@ def main_partie4():
             })
     
     # Partie 2
-    for cfg in ['A', 'B', 'C1', 'C2']:
+    for cfg in ['B', 'C1', 'C2']:
         key = f'P2_{cfg}'
         if key in all_iou_results:
             ablation_data.append({
@@ -290,11 +301,6 @@ def main_partie4():
     ablation_df.to_csv(f'{output_dir}/ablation_study.csv', index=False)
     print(ablation_df.to_string(index=False))
     print(f"\nTableau ablation sauvegarde: {output_dir}/ablation_study.csv")
-    
-    # Sauvegarde des IoU détaillés
-    print(f"\n{'-'*10}")
-    print("SAUVEGARDE DES IoU DETAILLES")
-    print(f"{'-'*10}")
     
     # Sauvegarder tous les scores IoU par modèle
     all_iou_scores_df = []

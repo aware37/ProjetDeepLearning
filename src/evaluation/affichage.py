@@ -125,7 +125,7 @@ def plot_comparison_configs(all_histories, output_dir='./results'):
 
 
 def save_results_csv(histories, output_dir='./results'):
-    """Sauvegarde les résultats d'entraînement dans des fichiers CSV"""
+    """Sauvegarde les résultats d'entraînement dans des fichiers CSV."""
     import pandas as pd
     
     os.makedirs(output_dir, exist_ok=True)
@@ -169,7 +169,22 @@ def plot_attention_heatmaps(model, dataloader, config, device, num_samples=5, ou
     """Genere et sauvegarde des heatmaps d'attention pour des échantillons"""
     model.eval()
     os.makedirs(output_dir, exist_ok=True)
+
+    if config == 'A':
+        branch_idx = 1
+        branch_name = 'L (Large)'
+    elif config == 'B' or config == 'C1':
+        branch_idx = 1  # Branche L reçoit l'image segmentée
+        branch_name = 'L (Large)'
+    elif config == 'C2':
+        branch_idx = 0  # Branche S reçoit l'image segmentée
+        branch_name = 'S (Small)'
+    else:
+        branch_idx = 1
+        branch_name = 'L (Large)'
     
+    print(f"Config {config}: Génération heatmaps depuis branche {branch_name} (index {branch_idx})")
+
     sample_count = 0
     
     with torch.no_grad():
@@ -195,7 +210,7 @@ def plot_attention_heatmaps(model, dataloader, config, device, num_samples=5, ou
             
             _ = model(input_S, input_L, mask=mask_input)
             
-            heatmap = model.get_heatmap(branch_idx=0)
+            heatmap = model.get_heatmap(branch_idx=branch_idx)
             
             if heatmap is None:
                 continue

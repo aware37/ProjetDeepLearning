@@ -1,0 +1,1 @@
+Ce dossier est inclus dans le rendu car il contient des images confidentielles.

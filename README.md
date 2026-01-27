@@ -178,20 +178,19 @@ results/
 │   ├── comparison_all_configs.png
 │   ├── results_config_*.csv
 │   └── summary.csv
-│
+├── partie2/
+│   ├── .../
+├── partie3/
+│   ├── .../
 ├── partie4/
-│   ├── curves_config_*_baseline.png
-│   ├── curves_config_C1_iou.png
 │   ├── iou_loss_impact_C1.png
 │   ├── iou_distribution_*.png
 │   ├── iou_summary.csv
-│   ├── ablation_study.csv
 │   └── heatmaps/
-│       ├── A_baseline/
-│       ├── B_baseline/
-│       ├── C1_baseline/
-│       ├── C2_baseline/
-│       └── C1_iou/
+│       ├── P1_B/
+│       ├── P1_C1/
+│       ├── .../
+│       └── P4_C1_IoUloss/
 ```
 
 ### Metriques
@@ -209,7 +208,7 @@ results/
 - 2 branches paralleles (Small et Large)
 - Cross-Attention pour echange d'information
 - Patch size: 16x16
-- Embedding dimension: 192
+- Embedding dimension: 192, 384
 - Profondeur: `[1, 4, 0]` par branche
 - 6 tetes d'attention
 

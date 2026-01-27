@@ -323,13 +323,12 @@ class VisionTransformer(nn.Module):
         return out
 
     def forward(self, x_branch0, x_branch1):
-        # Appel de notre feature extractor double entrée
         xs = self.forward_features(x_branch0, x_branch1)
         
-        # Passage dans les têtes de classification (Heads)
+        # Classification
         ce_logits = [self.head[i](x) for i, x in enumerate(xs)]
         
-        # Fusion des décisions (Moyenne des deux branches)
+        # Fusion des décisions
         ce_logits = torch.mean(torch.stack(ce_logits, dim=0), dim=0)
         
         return ce_logits

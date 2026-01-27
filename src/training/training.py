@@ -5,29 +5,8 @@ import torch
 from sklearn.metrics import f1_score, accuracy_score
 from tqdm import tqdm
 
-def train_model_crossvit(model, dataloaders, criterion, optimizer, scheduler, config, device, 
-                         num_epochs=25, use_iou_loss=False, lambda_iou=0.1, checkpoint_dir='checkpoints'):
-    """
-    Entraîne le modèle CrossViT avec routage des inputs selon la configuration.
-    
-    Args:
-        model: Modèle CrossViT
-        dataloaders: dict avec 'train' et 'val' DataLoaders
-        criterion: Loss function
-        optimizer: Optimizer
-        scheduler: Learning rate scheduler
-        config (str): 'A', 'B', 'C1', 'C2'
-        device: torch device
-        num_epochs: Nombre d'epochs
-        use_iou_loss: Activer la perte IoU
-        lambda_iou: Poids de la perte IoU
-        checkpoint_dir: Répertoire pour sauvegarder les modèles
-    
-    Returns:
-        model: Meilleur modèle entraîné
-        history: Dict avec les métriques
-        final_preds: Dict avec les prédictions du meilleur modèle
-    """
+def train_model_crossvit(model, dataloaders, criterion, optimizer, scheduler, config, device, num_epochs=25, use_iou_loss=False, lambda_iou=0.1, checkpoint_dir='checkpoints'):
+    """Entraîne le modèle CrossViT avec routage des inputs selon la configuration"""
     since = time.time()
 
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -153,11 +132,11 @@ def train_model_crossvit(model, dataloaders, criterion, optimizer, scheduler, co
                 print(f'Chemin: {best_model_path}')
 
     time_elapsed = time.time() - since
-    print(f'\n{"-"*60}')
+    print(f'\n{"-"*10}')
     print(f'Training complete in {int(time_elapsed // 60)}m {int(time_elapsed % 60)}s')
     print(f'Best val Accuracy: {best_val_acc:.4f}')
     print(f'Best val F1-Score: {best_val_f1:.4f}')
-    print(f'{"-"*60}')
+    print(f'{"-"*10}')
 
     if best_model_wts is not None:
         model.load_state_dict(best_model_wts)
