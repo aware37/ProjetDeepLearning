@@ -88,6 +88,9 @@ class CrossAttention(nn.Module):
         self.proj = nn.Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
 
+        # Visualisation de l'attention
+        self.last_attn = None 
+
     def forward(self, x):
 
         B, N, C = x.shape
@@ -98,6 +101,9 @@ class CrossAttention(nn.Module):
         attn = (q @ k.transpose(-2, -1)) * self.scale  # BH1(C/H) @ BH(C/H)N -> BH1N
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
+
+        # Sauvegarder attention pour visualisation
+        self.last_attn = attn.detach()
 
         x = (attn @ v).transpose(1, 2).reshape(B, 1, C)   # (BH1N @ BHN(C/H)) -> BH1(C/H) -> B1H(C/H) -> B1C
         x = self.proj(x)
@@ -205,9 +211,11 @@ def _compute_num_patches(img_size, patches):
 class VisionTransformer(nn.Module):
     """ Vision Transformer with support for patch or hybrid CNN input stage
     """
-    def __init__(self, img_size=(224, 224), patch_size=(8, 16), in_chans=3, num_classes=1000, embed_dim=(192, 384), depth=([1, 3, 1], [1, 3, 1], [1, 3, 1]),
-                 num_heads=(6, 12), mlp_ratio=(2., 2., 4.), qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
-                 drop_path_rate=0., hybrid_backbone=None, norm_layer=nn.LayerNorm, multi_conv=False, **kwargs):  # <-- Ajoutez **kwargs
+    def __init__(self, img_size=(224, 224), patch_size=(8, 16), in_chans=3, num_classes=1000, 
+                 embed_dim=(192, 384), depth=([1, 3, 1], [1, 3, 1], [1, 3, 1]),
+                 num_heads=(6, 12), mlp_ratio=(2., 2., 4.), qkv_bias=False, qk_scale=None, 
+                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0., hybrid_backbone=None, 
+                 norm_layer=nn.LayerNorm, multi_conv=False, **kwargs):
         super().__init__()
 
         self.num_classes = num_classes
@@ -220,41 +228,47 @@ class VisionTransformer(nn.Module):
 
         self.patch_embed = nn.ModuleList()
         if hybrid_backbone is None:
-            self.pos_embed = nn.ParameterList([nn.Parameter(torch.zeros(1, 1 + num_patches[i], embed_dim[i])) for i in range(self.num_branches)])
+            self.pos_embed = nn.ParameterList([nn.Parameter(torch.zeros(1, 1 + num_patches[i], embed_dim[i])) 
+                                               for i in range(self.num_branches)])
             for im_s, p, d in zip(img_size, patch_size, embed_dim):
-                self.patch_embed.append(PatchEmbed(img_size=im_s, patch_size=p, in_chans=in_chans, embed_dim=d, multi_conv=multi_conv))
+                self.patch_embed.append(PatchEmbed(img_size=im_s, patch_size=p, in_chans=in_chans, 
+                                                   embed_dim=d, multi_conv=multi_conv))
         else:
             self.pos_embed = nn.ParameterList()
             try:
                 from .t2t import T2T, get_sinusoid_encoding
             except ImportError:
-                raise ImportError("The t2t module is required for hybrid_backbone support. Please ensure t2t.py is in the models directory.")
+                raise ImportError("The t2t module is required for hybrid_backbone support.")
             tokens_type = 'transformer' if hybrid_backbone == 't2t' else 'performer'
             for idx, (im_s, p, d) in enumerate(zip(img_size, patch_size, embed_dim)):
                 self.patch_embed.append(T2T(im_s, tokens_type=tokens_type, patch_size=p, embed_dim=d))
-                self.pos_embed.append(nn.Parameter(data=get_sinusoid_encoding(n_position=1 + num_patches[idx], d_hid=embed_dim[idx]), requires_grad=False))
+                self.pos_embed.append(nn.Parameter(data=get_sinusoid_encoding(n_position=1 + num_patches[idx], 
+                                                                              d_hid=embed_dim[idx]), requires_grad=False))
 
             del self.pos_embed
-            self.pos_embed = nn.ParameterList([nn.Parameter(torch.zeros(1, 1 + num_patches[i], embed_dim[i])) for i in range(self.num_branches)])
+            self.pos_embed = nn.ParameterList([nn.Parameter(torch.zeros(1, 1 + num_patches[i], embed_dim[i])) 
+                                               for i in range(self.num_branches)])
 
-        self.cls_token = nn.ParameterList([nn.Parameter(torch.zeros(1, 1, embed_dim[i])) for i in range(self.num_branches)])
+        self.cls_token = nn.ParameterList([nn.Parameter(torch.zeros(1, 1, embed_dim[i])) 
+                                           for i in range(self.num_branches)])
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         total_depth = sum([sum(x[-2:]) for x in depth])
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, total_depth)]  # stochastic depth decay rule
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, total_depth)]
         dpr_ptr = 0
         self.blocks = nn.ModuleList()
         for idx, block_cfg in enumerate(depth):
             curr_depth = max(block_cfg[:-1]) + block_cfg[-1]
             dpr_ = dpr[dpr_ptr:dpr_ptr + curr_depth]
             blk = MultiScaleBlock(embed_dim, num_patches, block_cfg, num_heads=num_heads, mlp_ratio=mlp_ratio,
-                                  qkv_bias=qkv_bias, qk_scale=qk_scale, drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr_,
-                                  norm_layer=norm_layer)
+                                  qkv_bias=qkv_bias, qk_scale=qk_scale, drop=drop_rate, attn_drop=attn_drop_rate, 
+                                  drop_path=dpr_, norm_layer=norm_layer)
             dpr_ptr += curr_depth
             self.blocks.append(blk)
 
         self.norm = nn.ModuleList([norm_layer(embed_dim[i]) for i in range(self.num_branches)])
-        self.head = nn.ModuleList([nn.Linear(embed_dim[i], num_classes) if num_classes > 0 else nn.Identity() for i in range(self.num_branches)])
+        self.head = nn.ModuleList([nn.Linear(embed_dim[i], num_classes) if num_classes > 0 else nn.Identity() 
+                                   for i in range(self.num_branches)])
 
         for i in range(self.num_branches):
             if self.pos_embed[i].requires_grad:
@@ -266,7 +280,7 @@ class VisionTransformer(nn.Module):
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
+            if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
         elif isinstance(m, nn.LayerNorm):
             nn.init.constant_(m.bias, 0)
@@ -286,23 +300,131 @@ class VisionTransformer(nn.Module):
         self.num_classes = num_classes
         self.head = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
 
-    def forward_features(self, x_branch0, x_branch1):
+    def get_attention_rollout(self, branch_idx=0):
+        """Calcule le rollout de l'attention pour une branche"""
+        attn_list = []
+        for blk in self.blocks:
+            fusion = blk.fusion[branch_idx]
+            modules = fusion if isinstance(fusion, nn.Sequential) else [fusion]
+            for m in modules:
+                if hasattr(m, 'attn') and m.attn.last_attn is not None:
+                    attn_list.append(m.attn.last_attn)
+        
+        if not attn_list:
+            return None
+        
+        # Rollout, produit cumulatif des attentions normalisées
+        rollout = None
+        for attn in attn_list:
+            attn_mean = attn.mean(dim=1)  # (B, H, 1, N) → (B, 1, N)
+            N = attn_mean.shape[-1]
+            
+            # Ajouter identité pour stabilité
+            eye = torch.eye(N, device=attn_mean.device).unsqueeze(0).expand(attn_mean.shape[0], -1, -1)
+            attn_norm = (attn_mean + eye) / 2
+            attn_norm = attn_norm / attn_norm.sum(dim=-1, keepdim=True)
+            
+            rollout = attn_norm if rollout is None else rollout @ attn_norm
+        
+        return rollout[:, 0, 1:]  # Attention CLS → patches
+    
+    def get_heatmap(self, branch_idx=0):
+        """Convertit l'attention rollout en heatmap à la résolution de l'image"""
+        rollout = self.get_attention_rollout(branch_idx)
+        if rollout is None:
+            return None
+        
+        B = rollout.shape[0]
+        
+        # Extraire patch_size correctement (peut être tuple ou int)
+        patch_size = self.patch_embed[branch_idx].patch_size
+        if isinstance(patch_size, (list, tuple)):
+            patch_size = patch_size[0]
+        
+        # Extraire img_size correctement (peut être tuple ou int)
+        img_size = self.img_size[branch_idx]
+        if isinstance(img_size, (list, tuple)):
+            img_size = img_size[0]
+        
+        # Calculer n_patches
+        n_patches = img_size // patch_size
+        
+        # Reshape en grille 2D et interpoler
+        heatmap = rollout.reshape(B, n_patches, n_patches).unsqueeze(1)
+        heatmap = F.interpolate(heatmap, size=(img_size, img_size), mode='bilinear', align_corners=False).squeeze(1)
+        
+        # Normaliser [0, 1] par batch (plus stable)
+        heatmap_min = heatmap.view(B, -1).min(dim=1, keepdim=True)[0].view(B, 1, 1)
+        heatmap_max = heatmap.view(B, -1).max(dim=1, keepdim=True)[0].view(B, 1, 1)
+        heatmap = (heatmap - heatmap_min) / (heatmap_max - heatmap_min + 1e-8)
+        
+        return heatmap
+    
+    def compute_iou(self, attention_map, mask, threshold=0.8):
+        """Calcule l'IoU entre la carte d'attention et le masque"""
+        # Adapter masque (B, C, H, W) → (B, H, W)
+        if mask.dim() == 4:
+            mask = mask[:, 0, :, :]
+        
+        # Redimensionner si nécessaire
+        if mask.shape[-2:] != attention_map.shape[-2:]:
+            mask = F.interpolate(mask.unsqueeze(1).float(), size=attention_map.shape[-2:], mode='nearest').squeeze(1)
+        
+        # Binariser (top 20% de l'attention)
+        thresh_val = torch.quantile(attention_map.flatten(1), threshold, dim=1).view(-1, 1, 1)
+        binary_att = (attention_map >= thresh_val).float()
+        binary_mask = (mask > 0.5).float()
+        
+        # IoU = intersection / union
+        inter = (binary_att * binary_mask).sum(dim=[1, 2])
+        union = ((binary_att + binary_mask) > 0).float().sum(dim=[1, 2])
+        
+        return (inter / (union + 1e-6)).mean()
+
+    def mask_weight(self, mask, x_in, branch_idx, gamma=2.0, epsilon=0.01):
+        """Applique le pondération basée par patch selon un masque"""
+        curr_mask = mask.float()
+        
+        # Garder un seul canal si RGB
+        if curr_mask.shape[1] == 3:
+            curr_mask = curr_mask[:, 0:1, :, :]
+        
+        # Adapter à la taille de l'image d'entrée
+        if curr_mask.shape[-2:] != x_in.shape[-2:]:
+            curr_mask = F.interpolate(curr_mask, size=x_in.shape[-2:], mode='nearest')
+        
+        # Calculer ratio de pixels masqués par patch
+        p_size = self.patch_embed[branch_idx].patch_size
+        rp = F.avg_pool2d(curr_mask, kernel_size=p_size, stride=p_size)
+        rp = rp.flatten(2).transpose(1, 2)
+        
+        # Calculer poids wp = (epsilon + rp)^gamma
+        wp = torch.pow(epsilon + rp, gamma)
+        wp = wp / (wp.mean(dim=1, keepdim=True) + 1e-6)
+        
+        return wp
+
+    def forward_features(self, x_branch0, x_branch1, mask=None):
         """Extrait les features pour les deux branches"""
         inputs = [x_branch0, x_branch1]
-        
         xs = []
+        
         for i in range(self.num_branches):
             x_in = inputs[i]
             
             # Redimensionner
-            if x_in.shape[-2] != self.img_size[i] or x_in.shape[-1] != self.img_size[i]:
-                 x_in = torch.nn.functional.interpolate(
-                     x_in, size=(self.img_size[i], self.img_size[i]), 
-                     mode='bicubic', align_corners=False
-                 )
+            if x_in.shape[-2:] != (self.img_size[i], self.img_size[i]):
+                x_in = F.interpolate(x_in, size=(self.img_size[i], self.img_size[i]), 
+                                    mode='bicubic', align_corners=False)
             
             # Embedding (PatchEmbed)
             tmp = self.patch_embed[i](x_in)
+            
+            # Pondération par masque
+            if mask is not None:
+                wp = self.mask_weight(mask, x_in, i)
+                if wp.shape[1] == tmp.shape[1]:
+                    tmp = tmp * wp
             
             # Ajouter CLS token + position encoding
             B = x_in.shape[0]
@@ -311,29 +433,32 @@ class VisionTransformer(nn.Module):
             tmp = tmp + self.pos_embed[i]
             tmp = self.pos_drop(tmp)
             xs.append(tmp)
-
+        
         # Blocs cross-attention
         for blk in self.blocks:
             xs = blk(xs)
-
+        
         # Normalisation et extraction CLS
         xs = [self.norm[i](x) for i, x in enumerate(xs)]
         out = [x[:, 0] for x in xs]
 
         return out
 
-    def forward(self, x_branch0, x_branch1):
-        # Appel de notre feature extractor double entrée
-        xs = self.forward_features(x_branch0, x_branch1)
+    def forward(self, x_branch0, x_branch1, mask=None, return_iou_loss=False):
+        xs = self.forward_features(x_branch0, x_branch1, mask=mask)
         
-        # Passage dans les têtes de classification (Heads)
+        # Classification
         ce_logits = [self.head[i](x) for i, x in enumerate(xs)]
-        
-        # Fusion des décisions (Moyenne des deux branches)
         ce_logits = torch.mean(torch.stack(ce_logits, dim=0), dim=0)
         
+        # Perte IoU
+        if return_iou_loss and mask is not None:
+            heatmap = self.get_heatmap(branch_idx=0)
+            if heatmap is not None:
+                iou_loss = 1.0 - self.compute_iou(heatmap, mask)
+                return ce_logits, iou_loss
+        
         return ce_logits
-
 
 
 @register_model
@@ -372,7 +497,7 @@ def crossvit_part2_sym(pretrained=False, **kwargs):
     kwargs.pop('pretrained_cfg_overlay', None)
 
     model = VisionTransformer(img_size=[224, 224],
-                              patch_size=[16, 16], embed_dim=[384, 384], depth=[[4, 4, 0], [4, 4, 0], [4, 4, 0]],
+                              patch_size=[16, 16], embed_dim=[192, 192], depth=[[4, 4, 0], [4, 4, 0], [4, 4, 0]],
                               num_heads=[6, 6], mlp_ratio=[4, 4, 1], qkv_bias=True,
                               norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     model.default_cfg = _cfg()
@@ -400,7 +525,7 @@ def crossvit_base_224(pretrained=False, **kwargs):
     kwargs.pop('pretrained_cfg_overlay', None)
 
     model = VisionTransformer(img_size=[240, 224],
-                              patch_size=[12, 16], embed_dim=[384, 768], depth=[[1, 4, 0], [1, 4, 0], [1, 4, 0]],
+                              patch_size=[12, 16], embed_dim=[384, 768], depth=[[4, 4, 0], [1, 4, 0], [1, 4, 0]],
                               num_heads=[12, 12], mlp_ratio=[4, 4, 1], qkv_bias=True,
                               norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     model.default_cfg = _cfg()

@@ -205,9 +205,11 @@ def _compute_num_patches(img_size, patches):
 class VisionTransformer(nn.Module):
     """ Vision Transformer with support for patch or hybrid CNN input stage
     """
-    def __init__(self, img_size=(224, 224), patch_size=(8, 16), in_chans=3, num_classes=1000, embed_dim=(192, 384), depth=([1, 3, 1], [1, 3, 1], [1, 3, 1]),
-                 num_heads=(6, 12), mlp_ratio=(2., 2., 4.), qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
-                 drop_path_rate=0., hybrid_backbone=None, norm_layer=nn.LayerNorm, multi_conv=False, **kwargs):  # <-- Ajoutez **kwargs
+    def __init__(self, img_size=(224, 224), patch_size=(8, 16), in_chans=3, num_classes=1000, 
+                 embed_dim=(192, 384), depth=([1, 3, 1], [1, 3, 1], [1, 3, 1]),
+                 num_heads=(6, 12), mlp_ratio=(2., 2., 4.), qkv_bias=False, qk_scale=None, 
+                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0., hybrid_backbone=None, 
+                 norm_layer=nn.LayerNorm, multi_conv=False, **kwargs):
         super().__init__()
 
         self.num_classes = num_classes
@@ -220,41 +222,47 @@ class VisionTransformer(nn.Module):
 
         self.patch_embed = nn.ModuleList()
         if hybrid_backbone is None:
-            self.pos_embed = nn.ParameterList([nn.Parameter(torch.zeros(1, 1 + num_patches[i], embed_dim[i])) for i in range(self.num_branches)])
+            self.pos_embed = nn.ParameterList([nn.Parameter(torch.zeros(1, 1 + num_patches[i], embed_dim[i])) 
+                                               for i in range(self.num_branches)])
             for im_s, p, d in zip(img_size, patch_size, embed_dim):
-                self.patch_embed.append(PatchEmbed(img_size=im_s, patch_size=p, in_chans=in_chans, embed_dim=d, multi_conv=multi_conv))
+                self.patch_embed.append(PatchEmbed(img_size=im_s, patch_size=p, in_chans=in_chans, 
+                                                   embed_dim=d, multi_conv=multi_conv))
         else:
             self.pos_embed = nn.ParameterList()
             try:
                 from .t2t import T2T, get_sinusoid_encoding
             except ImportError:
-                raise ImportError("The t2t module is required for hybrid_backbone support. Please ensure t2t.py is in the models directory.")
+                raise ImportError("The t2t module is required for hybrid_backbone support.")
             tokens_type = 'transformer' if hybrid_backbone == 't2t' else 'performer'
             for idx, (im_s, p, d) in enumerate(zip(img_size, patch_size, embed_dim)):
                 self.patch_embed.append(T2T(im_s, tokens_type=tokens_type, patch_size=p, embed_dim=d))
-                self.pos_embed.append(nn.Parameter(data=get_sinusoid_encoding(n_position=1 + num_patches[idx], d_hid=embed_dim[idx]), requires_grad=False))
+                self.pos_embed.append(nn.Parameter(data=get_sinusoid_encoding(n_position=1 + num_patches[idx], 
+                                                                              d_hid=embed_dim[idx]), requires_grad=False))
 
             del self.pos_embed
-            self.pos_embed = nn.ParameterList([nn.Parameter(torch.zeros(1, 1 + num_patches[i], embed_dim[i])) for i in range(self.num_branches)])
+            self.pos_embed = nn.ParameterList([nn.Parameter(torch.zeros(1, 1 + num_patches[i], embed_dim[i])) 
+                                               for i in range(self.num_branches)])
 
-        self.cls_token = nn.ParameterList([nn.Parameter(torch.zeros(1, 1, embed_dim[i])) for i in range(self.num_branches)])
+        self.cls_token = nn.ParameterList([nn.Parameter(torch.zeros(1, 1, embed_dim[i])) 
+                                           for i in range(self.num_branches)])
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         total_depth = sum([sum(x[-2:]) for x in depth])
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, total_depth)]  # stochastic depth decay rule
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, total_depth)]
         dpr_ptr = 0
         self.blocks = nn.ModuleList()
         for idx, block_cfg in enumerate(depth):
             curr_depth = max(block_cfg[:-1]) + block_cfg[-1]
             dpr_ = dpr[dpr_ptr:dpr_ptr + curr_depth]
             blk = MultiScaleBlock(embed_dim, num_patches, block_cfg, num_heads=num_heads, mlp_ratio=mlp_ratio,
-                                  qkv_bias=qkv_bias, qk_scale=qk_scale, drop=drop_rate, attn_drop=attn_drop_rate, drop_path=dpr_,
-                                  norm_layer=norm_layer)
+                                  qkv_bias=qkv_bias, qk_scale=qk_scale, drop=drop_rate, attn_drop=attn_drop_rate, 
+                                  drop_path=dpr_, norm_layer=norm_layer)
             dpr_ptr += curr_depth
             self.blocks.append(blk)
 
         self.norm = nn.ModuleList([norm_layer(embed_dim[i]) for i in range(self.num_branches)])
-        self.head = nn.ModuleList([nn.Linear(embed_dim[i], num_classes) if num_classes > 0 else nn.Identity() for i in range(self.num_branches)])
+        self.head = nn.ModuleList([nn.Linear(embed_dim[i], num_classes) if num_classes > 0 else nn.Identity() 
+                                   for i in range(self.num_branches)])
 
         for i in range(self.num_branches):
             if self.pos_embed[i].requires_grad:
@@ -266,7 +274,7 @@ class VisionTransformer(nn.Module):
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
+            if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
         elif isinstance(m, nn.LayerNorm):
             nn.init.constant_(m.bias, 0)
@@ -286,23 +294,51 @@ class VisionTransformer(nn.Module):
         self.num_classes = num_classes
         self.head = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
 
-    def forward_features(self, x_branch0, x_branch1):
+
+    def mask_weight(self, mask, x_in, branch_idx, gamma=2.0, epsilon=1e-6):
+        """Applique le pondération basée par patch selon un masque"""
+        curr_mask = mask.float()
+        
+        # Garder un seul canal si RGB
+        if curr_mask.shape[1] == 3:
+            curr_mask = curr_mask[:, 0:1, :, :]
+        
+        # Adapter à la taille de l'image d'entrée
+        if curr_mask.shape[-2:] != x_in.shape[-2:]:
+            curr_mask = F.interpolate(curr_mask, size=x_in.shape[-2:], mode='nearest')
+        
+        # Calculer ratio de pixels masqués par patch
+        p_size = self.patch_embed[branch_idx].patch_size
+        rp = F.avg_pool2d(curr_mask, kernel_size=p_size, stride=p_size)
+        rp = rp.flatten(2).transpose(1, 2)
+        
+        # Calculer poids wp
+        wp = torch.pow(epsilon + rp, gamma)
+        wp = wp / (wp.mean(dim=1, keepdim=True) + 1e-6)
+        
+        return wp
+
+    def forward_features(self, x_branch0, x_branch1, mask=None):
         """Extrait les features pour les deux branches"""
         inputs = [x_branch0, x_branch1]
-        
         xs = []
+        
         for i in range(self.num_branches):
             x_in = inputs[i]
             
             # Redimensionner
-            if x_in.shape[-2] != self.img_size[i] or x_in.shape[-1] != self.img_size[i]:
-                 x_in = torch.nn.functional.interpolate(
-                     x_in, size=(self.img_size[i], self.img_size[i]), 
-                     mode='bicubic', align_corners=False
-                 )
+            if x_in.shape[-2:] != (self.img_size[i], self.img_size[i]):
+                x_in = F.interpolate(x_in, size=(self.img_size[i], self.img_size[i]), 
+                                    mode='bicubic', align_corners=False)
             
             # Embedding (PatchEmbed)
             tmp = self.patch_embed[i](x_in)
+            
+            # Pondération par masque
+            if mask is not None:
+                wp = self.mask_weight(mask, x_in, i)
+                if wp.shape[1] == tmp.shape[1]:
+                    tmp = tmp * wp
             
             # Ajouter CLS token + position encoding
             B = x_in.shape[0]
@@ -311,29 +347,25 @@ class VisionTransformer(nn.Module):
             tmp = tmp + self.pos_embed[i]
             tmp = self.pos_drop(tmp)
             xs.append(tmp)
-
+        
         # Blocs cross-attention
         for blk in self.blocks:
             xs = blk(xs)
-
+        
         # Normalisation et extraction CLS
         xs = [self.norm[i](x) for i, x in enumerate(xs)]
         out = [x[:, 0] for x in xs]
 
         return out
 
-    def forward(self, x_branch0, x_branch1):
-        # Appel de notre feature extractor double entrée
-        xs = self.forward_features(x_branch0, x_branch1)
+    def forward(self, x_branch0, x_branch1, mask=None):
+        xs = self.forward_features(x_branch0, x_branch1, mask=mask)
         
-        # Passage dans les têtes de classification (Heads)
+        # Classification
         ce_logits = [self.head[i](x) for i, x in enumerate(xs)]
-        
-        # Fusion des décisions (Moyenne des deux branches)
         ce_logits = torch.mean(torch.stack(ce_logits, dim=0), dim=0)
         
         return ce_logits
-
 
 
 @register_model
@@ -359,7 +391,7 @@ def crossvit_part2(pretrained=False, **kwargs):
     kwargs.pop('pretrained_cfg_overlay', None)
 
     model = VisionTransformer(img_size=[224, 224],
-                              patch_size=[16, 16], embed_dim=[384, 384], depth=[[1, 4, 0], [1, 4, 0], [1, 4, 0]],
+                              patch_size=[16, 16], embed_dim=[192, 192], depth=[[1, 4, 0], [1, 4, 0], [1, 4, 0]],
                               num_heads=[6, 6], mlp_ratio=[4, 4, 1], qkv_bias=True,
                               norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     model.default_cfg = _cfg()
@@ -372,7 +404,7 @@ def crossvit_part2_sym(pretrained=False, **kwargs):
     kwargs.pop('pretrained_cfg_overlay', None)
 
     model = VisionTransformer(img_size=[224, 224],
-                              patch_size=[16, 16], embed_dim=[384, 384], depth=[[4, 4, 0], [4, 4, 0], [4, 4, 0]],
+                              patch_size=[16, 16], embed_dim=[192, 192], depth=[[4, 4, 0], [4, 4, 0], [4, 4, 0]],
                               num_heads=[6, 6], mlp_ratio=[4, 4, 1], qkv_bias=True,
                               norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     model.default_cfg = _cfg()
