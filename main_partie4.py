@@ -18,7 +18,7 @@ def main_partie4():
     a) Attention rollout (implémenté dans le modèle)
     b) Heatmaps pour quelques échantillons (visualisation)
     c) IoU moyen ± std pour chaque config (A/B/C1/C2 + variante même résolution)
-    d) Entraîner UN modèle avec IoU loss et comparer
+    d) Entraîner un modèle (C1) avec IoU loss et comparer
     """
     
     # Configuration
